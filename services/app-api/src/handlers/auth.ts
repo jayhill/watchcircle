@@ -19,6 +19,15 @@ export interface HttpResult {
   body: object;
 }
 
+export interface AuthHandlerSet {
+  requestCode(input: { body: AuthRequestBody; ipAddress: string }): Promise<HttpResult>;
+  verifyCode(input: { body: AuthVerifyBody; ipAddress: string }): Promise<HttpResult>;
+  issueWsToken(input: {
+    body: AuthWsTokenBody;
+    authorizationHeader: string | undefined;
+  }): Promise<HttpResult>;
+}
+
 interface EmailSender {
   sendVerificationCode(input: { email: string; code: string; eventId: string }): Promise<void>;
 }
@@ -56,7 +65,7 @@ export function createAuthHandlers(deps: {
   sessions: SessionServices;
   participantStore: ParticipantStore;
   emailSender: EmailSender;
-}) {
+}): AuthHandlerSet {
   return {
     async requestCode(input: { body: AuthRequestBody; ipAddress: string }): Promise<HttpResult> {
       try {
