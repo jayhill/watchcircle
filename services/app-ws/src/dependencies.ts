@@ -6,6 +6,8 @@ import {
 } from "@watchcircle/common";
 
 import { createConnectionStore, createConnectHandler } from "./handlers/connect.js";
+import { createConnectionCleanupStore, createDisconnectHandler } from "./handlers/disconnect.js";
+import { createDefaultRouteHandler as createDefaultRouteDispatchHandler } from "./handlers/default.js";
 
 function readRequiredEnv(name: string): string {
   const value = process.env[name];
@@ -35,4 +37,23 @@ export function createDefaultConnectHandler() {
     sessions,
     connectionStore,
   });
+}
+
+export function createDefaultDisconnectHandler() {
+  const tableName = readRequiredEnv("TABLE_NAME");
+  const region = process.env.AWS_REGION ?? "us-east-1";
+  const dynamoEndpoint = process.env.DYNAMO_ENDPOINT;
+
+  const dynamo = createDynamoClient({ region, endpoint: dynamoEndpoint });
+  const docClient = createDocumentClient(dynamo);
+  const db = createDbOperations(docClient, { tableName });
+  const connectionStore = createConnectionCleanupStore({ db });
+
+  return createDisconnectHandler({
+    connectionStore,
+  });
+}
+
+export function createDefaultRouteHandler() {
+  return createDefaultRouteDispatchHandler();
 }
