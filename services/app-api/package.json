@@ -13,6 +13,7 @@
     "test:integration": "vitest run src/__integration__/**/*.test.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-ssm": "^3.879.0",
     "@watchcircle/common": "0.1.0"
   },
   "devDependencies": {

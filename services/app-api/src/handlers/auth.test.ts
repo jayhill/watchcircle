@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   createAuthAbuseProtector,
@@ -64,7 +64,14 @@ function createVerifyLockStore() {
 }
 
 describe("auth handlers", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("returns generic request success and sends code", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
+
     const sentCodes: Array<{ email: string; code: string; eventId: string }> = [];
 
     const handlers = createAuthHandlers({
@@ -105,6 +112,9 @@ describe("auth handlers", () => {
   });
 
   it("verifies code and returns session token", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
+
     const tokenStore = createInMemoryTokenStore();
     const magicLinks = createMagicLinkService({ tokenStore });
     const issued = await magicLinks.issueCode({
@@ -157,6 +167,9 @@ describe("auth handlers", () => {
   });
 
   it("issues ws token from valid session bearer token", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
+
     const sessionServices = createSessionTokenService({
       sessionSecret: "session-secret",
       wsSecret: "ws-secret",
@@ -202,5 +215,122 @@ describe("auth handlers", () => {
     expect(result.statusCode).toBe(200);
     expect((result.body as { wsToken: string }).wsToken).toBeTypeOf("string");
     expect((result.body as { expiresInSeconds: number }).expiresInSeconds).toBe(90);
+  });
+
+  it("returns rate limit after repeated code requests", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
+
+    const handlers = createAuthHandlers({
+      magicLinks: createMagicLinkService({ tokenStore: createInMemoryTokenStore() }),
+      abuseProtector: createAuthAbuseProtector({
+        counterStore: createCounterStore(),
+        verifyLockStore: createVerifyLockStore(),
+      }),
+      sessions: createSessionTokenService({
+        sessionSecret: "session-secret",
+        wsSecret: "ws-secret",
+      }),
+      participantStore: {
+        async ensureParticipant(input) {
+          return {
+            userId: "usr_1",
+            email: input.email,
+            displayName: input.displayName,
+            role: "participant" as const,
+          };
+        },
+      },
+      emailSender: {
+        async sendVerificationCode() {
+          return;
+        },
+      },
+    });
+
+    for (let index = 0; index < 5; index += 1) {
+      const result = await handlers.requestCode({
+        body: { email: "user@example.com", eventId: "evt_1" },
+        ipAddress: "1.2.3.4",
+      });
+      expect(result.statusCode).toBe(200);
+    }
+
+    const blocked = await handlers.requestCode({
+      body: { email: "user@example.com", eventId: "evt_1" },
+      ipAddress: "1.2.3.4",
+    });
+
+    expect(blocked.statusCode).toBe(429);
+    expect(blocked.body).toEqual({
+      error: {
+        code: "RATE_LIMITED",
+        message: "Too many attempts. Please try again later.",
+      },
+    });
+  });
+
+  it("locks verify after repeated invalid attempts", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
+
+    const handlers = createAuthHandlers({
+      magicLinks: createMagicLinkService({ tokenStore: createInMemoryTokenStore() }),
+      abuseProtector: createAuthAbuseProtector({
+        counterStore: createCounterStore(),
+        verifyLockStore: createVerifyLockStore(),
+      }),
+      sessions: createSessionTokenService({
+        sessionSecret: "session-secret",
+        wsSecret: "ws-secret",
+      }),
+      participantStore: {
+        async ensureParticipant(input) {
+          return {
+            userId: "usr_1",
+            email: input.email,
+            displayName: input.displayName,
+            role: "participant" as const,
+          };
+        },
+      },
+      emailSender: {
+        async sendVerificationCode() {
+          return;
+        },
+      },
+    });
+
+    for (let index = 0; index < 5; index += 1) {
+      const invalid = await handlers.verifyCode({
+        body: {
+          email: "user@example.com",
+          eventId: "evt_1",
+          code: "999999",
+          displayName: "Alice",
+        },
+        ipAddress: "1.2.3.4",
+      });
+
+      expect(invalid.statusCode).toBe(400);
+    }
+
+    const locked = await handlers.verifyCode({
+      body: {
+        email: "user@example.com",
+        eventId: "evt_1",
+        code: "999999",
+        displayName: "Alice",
+      },
+      ipAddress: "1.2.3.4",
+    });
+
+    expect(locked.statusCode).toBe(429);
+    expect(locked.body).toEqual({
+      error: {
+        code: "VERIFY_LOCKED",
+        message: "Verification is temporarily unavailable.",
+      },
+    });
   });
 });
