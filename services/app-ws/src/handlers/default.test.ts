@@ -30,4 +30,33 @@ describe("ws default route", () => {
     expect(result.statusCode).toBe(200);
     expect(result.body).toContain("accepted");
   });
+
+  it("validates chat:send payload text", async () => {
+    const handler = createDefaultRouteHandler();
+    const result = await handler({
+      body: JSON.stringify({ action: "chat:send", payload: { text: "" } }),
+    });
+
+    expect(result.statusCode).toBe(400);
+    expect(result.body).toContain("INVALID_PAYLOAD");
+  });
+
+  it("dispatches chat:send to action handler", async () => {
+    let capturedText = "";
+    const handler = createDefaultRouteHandler({
+      chatSendAction: async ({ text }) => {
+        capturedText = text;
+        return { accepted: true, action: "chat:send" };
+      },
+    });
+
+    const result = await handler({
+      requestContext: { connectionId: "conn_1" },
+      body: JSON.stringify({ action: "chat:send", payload: { text: "hello" } }),
+    });
+
+    expect(result.statusCode).toBe(200);
+    expect(capturedText).toBe("hello");
+    expect(result.body).toContain("chat:send");
+  });
 });

@@ -2,6 +2,13 @@ import { CLIENT_ACTIONS } from "../ws-contract.js";
 
 export interface WsDefaultEvent {
   body?: string | null;
+  requestContext?: {
+    connectionId?: string;
+  };
+}
+
+interface ChatSendAction {
+  (input: { connectionId?: string; text: string }): Promise<object>;
 }
 
 function badRequest(body: object) {
@@ -18,7 +25,7 @@ function ok(body: object) {
   };
 }
 
-export function createDefaultRouteHandler() {
+export function createDefaultRouteHandler(deps?: { chatSendAction?: ChatSendAction }) {
   return async (event: WsDefaultEvent) => {
     if (!event.body) {
       return badRequest({
@@ -69,6 +76,45 @@ export function createDefaultRouteHandler() {
           message: `Unsupported action: ${candidate.action}`,
         },
       });
+    }
+
+    if (candidate.action === "chat:send") {
+      const payload = candidate.payload;
+
+      if (!payload || typeof payload !== "object") {
+        return badRequest({
+          error: {
+            code: "INVALID_PAYLOAD",
+            message: "Payload must be an object.",
+          },
+        });
+      }
+
+      const text = (payload as { text?: unknown }).text;
+
+      if (typeof text !== "string" || !text.trim()) {
+        return badRequest({
+          error: {
+            code: "INVALID_PAYLOAD",
+            message: "chat:send requires non-empty text.",
+          },
+        });
+      }
+
+      if (!deps?.chatSendAction) {
+        return ok({
+          accepted: true,
+          action: candidate.action,
+          deferred: true,
+        });
+      }
+
+      const result = await deps.chatSendAction({
+        connectionId: event.requestContext?.connectionId,
+        text,
+      });
+
+      return ok(result);
     }
 
     return ok({
