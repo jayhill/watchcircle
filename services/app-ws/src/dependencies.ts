@@ -6,6 +6,11 @@ import {
 } from "@watchcircle/common";
 
 import { createConnectionStore, createConnectHandler } from "./handlers/connect.js";
+import {
+  createChatSendAction,
+  createNoopChatSendBroadcaster,
+  createNoopChatSendStore,
+} from "./handlers/chat-send.js";
 import { createConnectionCleanupStore, createDisconnectHandler } from "./handlers/disconnect.js";
 import { createDefaultRouteHandler as createDefaultRouteDispatchHandler } from "./handlers/default.js";
 
@@ -55,5 +60,12 @@ export function createDefaultDisconnectHandler() {
 }
 
 export function createDefaultRouteHandler() {
-  return createDefaultRouteDispatchHandler();
+  const chatSendAction = createChatSendAction({
+    store: createNoopChatSendStore(),
+    broadcaster: createNoopChatSendBroadcaster(),
+  });
+
+  return createDefaultRouteDispatchHandler({
+    chatSendAction,
+  });
 }
