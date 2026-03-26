@@ -1,0 +1,47 @@
+service: watchcircle-app-api
+frameworkVersion: "3"
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: ${opt:region, 'us-east-1'}
+  stage: ${opt:stage, 'dev'}
+  environment:
+    TABLE_NAME: ${self:custom.tableName}
+    STAGE: ${self:provider.stage}
+    AUTH_SECRETS_SOURCE: ${env:AUTH_SECRETS_SOURCE, 'env'}
+    SSM_PREFIX: ${env:SSM_PREFIX, '/watchcircle'}
+    SESSION_JWT_SECRET: ${env:SESSION_JWT_SECRET, ''}
+    WS_JWT_SECRET: ${env:WS_JWT_SECRET, ''}
+    DYNAMO_ENDPOINT: ${env:DYNAMO_ENDPOINT, ''}
+
+custom:
+  tableName: WatchCircle-${self:provider.stage}
+
+functions:
+  authRequest:
+    handler: src/handlers/auth-lambda.requestHandler
+    events:
+      - httpApi:
+          path: /auth/request
+          method: post
+
+  authVerify:
+    handler: src/handlers/auth-lambda.verifyHandler
+    events:
+      - httpApi:
+          path: /auth/verify
+          method: post
+
+  authWsToken:
+    handler: src/handlers/auth-lambda.wsTokenHandler
+    events:
+      - httpApi:
+          path: /auth/ws-token
+          method: post
+
+plugins:
+  - serverless-esbuild
+
+package:
+  individually: true

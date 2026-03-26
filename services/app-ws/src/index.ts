@@ -22,3 +22,24 @@ export const CLIENT_ACTIONS = [
   "chat:toggleEnabled",
   "questions:toggleEnabled",
 ] as const;
+
+export async function connectHandler() {
+  return {
+    statusCode: 200,
+    body: "connected",
+  };
+}
+
+export async function disconnectHandler() {
+  return {
+    statusCode: 200,
+    body: "disconnected",
+  };
+}
+
+export async function defaultHandler() {
+  return {
+    statusCode: 200,
+    body: "ok",
+  };
+}

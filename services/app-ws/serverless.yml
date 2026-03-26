@@ -1,0 +1,39 @@
+service: watchcircle-app-ws
+frameworkVersion: "3"
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: ${opt:region, 'us-east-1'}
+  stage: ${opt:stage, 'dev'}
+  environment:
+    TABLE_NAME: ${self:custom.tableName}
+    STAGE: ${self:provider.stage}
+
+custom:
+  tableName: WatchCircle-${self:provider.stage}
+
+functions:
+  connect:
+    handler: src/index.connectHandler
+    events:
+      - websocket:
+          route: $connect
+
+  disconnect:
+    handler: src/index.disconnectHandler
+    events:
+      - websocket:
+          route: $disconnect
+
+  default:
+    handler: src/index.defaultHandler
+    events:
+      - websocket:
+          route: $default
+
+plugins:
+  - serverless-esbuild
+
+package:
+  individually: true
