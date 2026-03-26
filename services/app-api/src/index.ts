@@ -22,3 +22,4 @@ export interface AuthWsTokenBody {
 }
 
 export { createAuthHandlers } from "./handlers/auth.js";
+export { createDefaultAuthHandlers } from "./dependencies.js";
