@@ -20,3 +20,5 @@ export interface AuthVerifyBody {
 export interface AuthWsTokenBody {
   eventId: string;
 }
+
+export { createAuthHandlers } from "./handlers/auth.js";

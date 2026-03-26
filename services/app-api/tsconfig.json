@@ -1,7 +1,7 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "rootDir": "src",
+    "rootDir": "../..",
     "paths": {
       "@watchcircle/common": ["../../common/src/index.ts"]
     }
