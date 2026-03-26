@@ -1,0 +1,42 @@
+# Node / workspace
+node_modules/
+npm-debug.log*
+
+# Builds / artifacts
+dist/
+build/
+coverage/
+.turbo/
+.vite/
+.vitest/
+
+# Serverless
+.serverless/
+.webpack/
+.esbuild/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+terraform.tfvars
+
+# Environment / secrets
+.env
+.env.*
+*.pem
+*.key
+*.crt
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
