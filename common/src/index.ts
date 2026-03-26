@@ -20,3 +20,7 @@ export const CONTRACT_CONSTANTS = {
   MAGIC_LINK_TTL_MINUTES: 15,
   SESSION_TTL_HOURS: 24,
 } as const;
+
+export * from "./db/client.js";
+export * from "./db/operations.js";
+export * from "./db/table-schema.js";
