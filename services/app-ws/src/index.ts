@@ -3,6 +3,8 @@ export interface WsEnvelope<TPayload = unknown> {
   payload: TPayload;
 }
 
+import { createDefaultConnectHandler } from "./dependencies.js";
+
 export const CLIENT_ACTIONS = [
   "chat:send",
   "chat:react",
@@ -23,11 +25,18 @@ export const CLIENT_ACTIONS = [
   "questions:toggleEnabled",
 ] as const;
 
-export async function connectHandler() {
-  return {
-    statusCode: 200,
-    body: "connected",
-  };
+let cachedConnectHandler: ReturnType<typeof createDefaultConnectHandler> | null = null;
+
+function getConnectHandler() {
+  if (!cachedConnectHandler) {
+    cachedConnectHandler = createDefaultConnectHandler();
+  }
+
+  return cachedConnectHandler;
+}
+
+export async function connectHandler(event: unknown) {
+  return getConnectHandler()(event as never);
 }
 
 export async function disconnectHandler() {
