@@ -1,0 +1,5 @@
+services:
+  app-api:
+    path: services/app-api
+  app-ws:
+    path: services/app-ws
