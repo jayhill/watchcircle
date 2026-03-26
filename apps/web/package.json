@@ -1,0 +1,11 @@
+{
+  "name": "@watchcircle/web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "mkdir -p dist && cp index.html dist/index.html",
+    "lint": "echo \"No lint configured for web yet\"",
+    "typecheck": "echo \"No typecheck configured for web yet\"",
+    "test": "echo \"No tests configured for web yet\""
+  }
+}
