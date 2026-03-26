@@ -14,7 +14,7 @@ interface EventUser {
   role: "host" | "cohost" | "panelist" | "participant";
 }
 
-interface HttpResult {
+export interface HttpResult {
   statusCode: number;
   body: object;
 }
