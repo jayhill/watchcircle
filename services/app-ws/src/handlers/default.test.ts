@@ -80,4 +80,21 @@ describe("ws default route", () => {
     expect(result.statusCode).toBe(400);
     expect(result.body).toContain("MISSING_EVENT_CONTEXT");
   });
+
+  it("maps unresolved sender to SENDER_NOT_FOUND response", async () => {
+    const handler = createDefaultRouteHandler({
+      chatSendAction: async () => {
+        throw new Error("SENDER_NOT_FOUND");
+      },
+    });
+
+    const result = await handler({
+      requestContext: { connectionId: "conn_1" },
+      queryStringParameters: { eventId: "evt_1" },
+      body: JSON.stringify({ action: "chat:send", payload: { text: "hello" } }),
+    });
+
+    expect(result.statusCode).toBe(400);
+    expect(result.body).toContain("SENDER_NOT_FOUND");
+  });
 });
