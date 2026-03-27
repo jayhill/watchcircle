@@ -73,9 +73,11 @@ export function createDefaultRouteHandler() {
   const sender = process.env.WS_MANAGEMENT_ENDPOINT
     ? createApiGatewayWsSender()
     : createNoopWsSender();
+  const connectionCleanupStore = createConnectionCleanupStore({ db });
   const broadcaster = createEventChatBroadcaster({
     db,
     sender,
+    connectionCleanupStore,
   });
 
   const chatSendAction = createChatSendAction({
