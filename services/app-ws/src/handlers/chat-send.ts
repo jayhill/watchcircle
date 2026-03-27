@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 
-import { chatMessageKey } from "@watchcircle/common";
+import { chatMessageKey, type Role } from "@watchcircle/common";
 
 export interface ChatSendInput {
   connectionId?: string;
@@ -11,6 +11,9 @@ export interface ChatSendInput {
 export interface ChatSendStore {
   save(input: {
     connectionId?: string;
+    userId: string;
+    displayName: string;
+    role: Role;
     eventId: string;
     text: string;
     messageId: string;
@@ -21,6 +24,9 @@ export interface ChatSendStore {
 export interface ChatSendBroadcaster {
   broadcast(input: {
     connectionId?: string;
+    userId: string;
+    displayName: string;
+    role: Role;
     eventId: string;
     text: string;
     messageId: string;
@@ -28,16 +34,36 @@ export interface ChatSendBroadcaster {
   }): Promise<void>;
 }
 
+export interface SenderIdentityResolver {
+  resolve(input: {
+    eventId: string;
+    connectionId?: string;
+  }): Promise<{ userId: string; displayName: string; role: Role } | null>;
+}
+
 export function createChatSendAction(deps: {
   store: ChatSendStore;
   broadcaster: ChatSendBroadcaster;
+  senderIdentityResolver: SenderIdentityResolver;
 }) {
   return async (input: ChatSendInput) => {
     const receivedAtEpoch = Math.floor(Date.now() / 1000);
     const messageId = `msg_${crypto.randomUUID()}`;
 
+    const identity = await deps.senderIdentityResolver.resolve({
+      eventId: input.eventId,
+      connectionId: input.connectionId,
+    });
+
+    if (!identity) {
+      throw new Error("SENDER_NOT_FOUND");
+    }
+
     await deps.store.save({
       connectionId: input.connectionId,
+      userId: identity.userId,
+      displayName: identity.displayName,
+      role: identity.role,
       eventId: input.eventId,
       text: input.text,
       messageId,
@@ -46,6 +72,9 @@ export function createChatSendAction(deps: {
 
     await deps.broadcaster.broadcast({
       connectionId: input.connectionId,
+      userId: identity.userId,
+      displayName: identity.displayName,
+      role: identity.role,
       eventId: input.eventId,
       text: input.text,
       messageId,
@@ -75,6 +104,18 @@ export function createNoopChatSendBroadcaster(): ChatSendBroadcaster {
   };
 }
 
+export function createNoopSenderIdentityResolver(): SenderIdentityResolver {
+  return {
+    async resolve() {
+      return {
+        userId: "unknown",
+        displayName: "Unknown",
+        role: "participant",
+      };
+    },
+  };
+}
+
 type DbOps = {
   putItem<T extends object>(item: T): Promise<void>;
   queryItems<T>(input: {
@@ -87,6 +128,16 @@ interface ConnectionItem {
   PK: string;
   SK: string;
   connectionId: string;
+  userId?: string;
+  role?: Role;
+}
+
+interface ParticipantItem {
+  PK: string;
+  SK: string;
+  userId: string;
+  displayName: string;
+  role: Role;
 }
 
 export function createDynamoChatSendStore(deps: { db: DbOps }): ChatSendStore {
@@ -98,6 +149,9 @@ export function createDynamoChatSendStore(deps: { db: DbOps }): ChatSendStore {
         messageId: input.messageId,
         eventId: input.eventId,
         senderConnectionId: input.connectionId,
+        userId: input.userId,
+        displayName: input.displayName,
+        role: input.role,
         text: input.text,
         type: "message",
         createdAt: input.receivedAtEpoch,
@@ -141,6 +195,9 @@ export function createEventChatBroadcaster(deps: {
                 eventId: input.eventId,
                 text: input.text,
                 senderConnectionId: input.connectionId,
+                userId: input.userId,
+                displayName: input.displayName,
+                role: input.role,
                 createdAt: input.receivedAtEpoch,
               },
             },
@@ -154,6 +211,50 @@ export function createEventChatBroadcaster(deps: {
           }
         })
       );
+    },
+  };
+}
+
+export function createDynamoSenderIdentityResolver(deps: { db: DbOps }): SenderIdentityResolver {
+  return {
+    async resolve(input) {
+      if (!input.connectionId) {
+        return null;
+      }
+
+      const connection = await deps.db.queryItems<ConnectionItem>({
+        KeyConditionExpression: "PK = :pk AND SK = :sk",
+        ExpressionAttributeValues: {
+          ":pk": `EVENT#${input.eventId}`,
+          ":sk": `CONN#${input.connectionId}`,
+        },
+      });
+
+      const connectionItem = connection[0];
+
+      if (!connectionItem?.userId) {
+        return null;
+      }
+
+      const participants = await deps.db.queryItems<ParticipantItem>({
+        KeyConditionExpression: "PK = :pk AND SK = :sk",
+        ExpressionAttributeValues: {
+          ":pk": `EVENT#${input.eventId}`,
+          ":sk": `USER#${connectionItem.userId}`,
+        },
+      });
+
+      const participant = participants[0];
+
+      if (!participant) {
+        return null;
+      }
+
+      return {
+        userId: participant.userId,
+        displayName: participant.displayName,
+        role: participant.role,
+      };
     },
   };
 }

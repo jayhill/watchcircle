@@ -44,10 +44,12 @@ describe("ws default route", () => {
   it("dispatches chat:send to action handler", async () => {
     let capturedText = "";
     let capturedEventId = "";
+    let capturedConnectionId = "";
     const handler = createDefaultRouteHandler({
-      chatSendAction: async ({ text, eventId }) => {
+      chatSendAction: async ({ text, eventId, connectionId }) => {
         capturedText = text;
         capturedEventId = eventId;
+        capturedConnectionId = connectionId ?? "";
         return { accepted: true, action: "chat:send" };
       },
     });
@@ -61,6 +63,7 @@ describe("ws default route", () => {
     expect(result.statusCode).toBe(200);
     expect(capturedText).toBe("hello");
     expect(capturedEventId).toBe("evt_1");
+    expect(capturedConnectionId).toBe("conn_1");
     expect(result.body).toContain("chat:send");
   });
 
