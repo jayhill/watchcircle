@@ -101,4 +101,23 @@ describe("auth store", () => {
     expect(first.userId).toBe(second.userId);
     expect(second.displayName).toBe("Alice");
   });
+
+  it("assigns host role when email matches event creator", async () => {
+    const db = createInMemoryDb();
+    const stores = createAuthStores({ db });
+
+    await db.putItem({
+      PK: "EVENT#evt_1",
+      SK: "META",
+      creatorEmail: "host@example.com",
+    });
+
+    const participant = await stores.participantStore.ensureParticipant({
+      eventId: "evt_1",
+      email: "HOST@example.com",
+      displayName: "Host User",
+    });
+
+    expect(participant.role).toBe("host");
+  });
 });

@@ -40,6 +40,20 @@ functions:
           path: /auth/ws-token
           method: post
 
+  eventsCreate:
+    handler: src/handlers/events-lambda.createHandler
+    events:
+      - httpApi:
+          path: /events
+          method: post
+
+  eventsGet:
+    handler: src/handlers/events-lambda.getHandler
+    events:
+      - httpApi:
+          path: /events/{eventId}
+          method: get
+
 plugins:
   - serverless-esbuild
 
