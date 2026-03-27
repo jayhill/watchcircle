@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 
-import { chatMessageKey, type Role } from "@watchcircle/common";
+import { chatMessageKey, type ChatNewEvent, type Role } from "@watchcircle/common";
 
 export interface ChatSendInput {
   connectionId?: string;
@@ -171,7 +171,7 @@ export function createDynamoChatSendStore(deps: { db: DbOps }): ChatSendStore {
 type ConnectionSendResult = "sent" | "gone";
 
 interface ConnectionSender {
-  send(connectionId: string, message: object): Promise<ConnectionSendResult>;
+  send(connectionId: string, message: ChatNewEvent): Promise<ConnectionSendResult>;
 }
 
 interface ConnectionCleanupStore {
@@ -195,7 +195,7 @@ export function createEventChatBroadcaster(deps: {
 
       await Promise.all(
         connections.map(async (connection) => {
-          const result = await deps.sender.send(connection.connectionId, {
+          const message: ChatNewEvent = {
             action: "chat:new",
             payload: {
               message: {
@@ -209,7 +209,9 @@ export function createEventChatBroadcaster(deps: {
                 createdAt: input.receivedAtEpoch,
               },
             },
-          });
+          };
+
+          const result = await deps.sender.send(connection.connectionId, message);
 
           if (result === "gone" && deps.connectionCleanupStore) {
             await deps.connectionCleanupStore.removeConnection({

@@ -3,11 +3,12 @@ import {
   GoneException,
   PostToConnectionCommand,
 } from "@aws-sdk/client-apigatewaymanagementapi";
+import type { ChatNewEvent } from "@watchcircle/common";
 
 export type WsSendResult = "sent" | "gone";
 
 export interface WsSender {
-  send(connectionId: string, message: object): Promise<WsSendResult>;
+  send(connectionId: string, message: ChatNewEvent): Promise<WsSendResult>;
 }
 
 function readRequiredEnv(name: string): string {
@@ -23,7 +24,7 @@ export function createApiGatewayWsSender(): WsSender {
   const client = new ApiGatewayManagementApiClient({ endpoint });
 
   return {
-    async send(connectionId: string, message: object): Promise<WsSendResult> {
+    async send(connectionId: string, message: ChatNewEvent): Promise<WsSendResult> {
       try {
         await client.send(
           new PostToConnectionCommand({
