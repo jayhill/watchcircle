@@ -24,6 +24,7 @@ export const CONTRACT_CONSTANTS = {
 export * from "./db/client.js";
 export * from "./db/operations.js";
 export * from "./db/table-schema.js";
+export * from "./contracts/ws-events.js";
 export * from "./auth/magic-link.js";
 export * from "./auth/rate-limit.js";
 export * from "./auth/session.js";
