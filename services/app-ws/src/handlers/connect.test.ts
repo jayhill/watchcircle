@@ -93,6 +93,43 @@ describe("ws connect handler", () => {
       },
     ]);
   });
+
+  it("writes both event and pointer records through handler+store", async () => {
+    const sessions = createSessionTokenService({
+      sessionSecret: "session-secret",
+      wsSecret: "ws-secret",
+    });
+    const wsToken = sessions.ws.createWsToken({
+      userId: "usr_1",
+      eventId: "evt_1",
+      role: "participant",
+      nowMs: Date.now(),
+    });
+
+    const db = createInMemoryDb();
+    const connectionStore = createConnectionStore({ db, ttlSeconds: 60 });
+    const handler = createConnectHandler({
+      sessions,
+      connectionStore,
+    });
+
+    const result = await handler({
+      requestContext: { connectionId: "conn_1" },
+      queryStringParameters: {
+        token: wsToken,
+        eventId: "evt_1",
+      },
+    });
+
+    expect(result.statusCode).toBe(200);
+    const items = db.getAll();
+    expect(
+      items.find((item) => item.PK === "EVENT#evt_1" && item.SK === "CONN#conn_1")
+    ).toBeDefined();
+    expect(
+      items.find((item) => item.PK === "CONNECTION#conn_1" && item.SK === "META")
+    ).toBeDefined();
+  });
 });
 
 describe("connection store", () => {
