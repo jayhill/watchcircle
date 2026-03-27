@@ -8,6 +8,7 @@ import {
 } from "@watchcircle/common";
 
 import { loadStageSecretsFromSsm, readSecretsFromEnv } from "./ssm-config.js";
+import { createNoopEmailSender, createSesEmailSender } from "./email-sender.js";
 import { createAuthHandlers } from "./handlers/auth.js";
 import { createDynamoEventStore, createEventHandlers } from "./handlers/events.js";
 import { createAuthStores } from "./stores/auth-store.js";
@@ -18,6 +19,23 @@ function readRequiredEnv(name: string): string {
     throw new Error(`Missing required env var: ${name}`);
   }
   return value;
+}
+
+function buildEmailSender(input: { region: string }) {
+  const source = process.env.AUTH_EMAIL_SENDER ?? "noop";
+
+  if (source === "ses") {
+    const fromEmail = readRequiredEnv("SES_FROM_EMAIL");
+    const productName = process.env.PRODUCT_NAME ?? "WatchCircle";
+
+    return createSesEmailSender({
+      fromEmail,
+      region: input.region,
+      productName,
+    });
+  }
+
+  return createNoopEmailSender();
 }
 
 export function createDefaultAuthHandlers() {
@@ -44,17 +62,14 @@ export function createDefaultAuthHandlers() {
     sessionSecret: secrets.sessionJwtSecret,
     wsSecret: secrets.wsJwtSecret,
   });
+  const emailSender = buildEmailSender({ region });
 
   return createAuthHandlers({
     magicLinks,
     abuseProtector,
     sessions,
     participantStore: stores.participantStore,
-    emailSender: {
-      async sendVerificationCode() {
-        return;
-      },
-    },
+    emailSender,
   });
 }
 
@@ -90,17 +105,14 @@ export async function createDefaultAuthHandlersFromSsm() {
     sessionSecret: secrets.sessionJwtSecret,
     wsSecret: secrets.wsJwtSecret,
   });
+  const emailSender = buildEmailSender({ region });
 
   return createAuthHandlers({
     magicLinks,
     abuseProtector,
     sessions,
     participantStore: stores.participantStore,
-    emailSender: {
-      async sendVerificationCode() {
-        return;
-      },
-    },
+    emailSender,
   });
 }
 
