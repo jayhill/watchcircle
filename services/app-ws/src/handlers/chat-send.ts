@@ -4,7 +4,7 @@ import { chatMessageKey, type Role } from "@watchcircle/common";
 
 export interface ChatSendInput {
   connectionId?: string;
-  eventId: string;
+  eventId?: string;
   text: string;
 }
 
@@ -34,37 +34,37 @@ export interface ChatSendBroadcaster {
   }): Promise<void>;
 }
 
-export interface SenderIdentityResolver {
+export interface SenderContextResolver {
   resolve(input: {
-    eventId: string;
+    eventId?: string;
     connectionId?: string;
-  }): Promise<{ userId: string; displayName: string; role: Role } | null>;
+  }): Promise<{ eventId: string; userId: string; displayName: string; role: Role } | null>;
 }
 
 export function createChatSendAction(deps: {
   store: ChatSendStore;
   broadcaster: ChatSendBroadcaster;
-  senderIdentityResolver: SenderIdentityResolver;
+  senderContextResolver: SenderContextResolver;
 }) {
   return async (input: ChatSendInput) => {
     const receivedAtEpoch = Math.floor(Date.now() / 1000);
     const messageId = `msg_${crypto.randomUUID()}`;
 
-    const identity = await deps.senderIdentityResolver.resolve({
+    const context = await deps.senderContextResolver.resolve({
       eventId: input.eventId,
       connectionId: input.connectionId,
     });
 
-    if (!identity) {
+    if (!context) {
       throw new Error("SENDER_NOT_FOUND");
     }
 
     await deps.store.save({
       connectionId: input.connectionId,
-      userId: identity.userId,
-      displayName: identity.displayName,
-      role: identity.role,
-      eventId: input.eventId,
+      userId: context.userId,
+      displayName: context.displayName,
+      role: context.role,
+      eventId: context.eventId,
       text: input.text,
       messageId,
       receivedAtEpoch,
@@ -72,10 +72,10 @@ export function createChatSendAction(deps: {
 
     await deps.broadcaster.broadcast({
       connectionId: input.connectionId,
-      userId: identity.userId,
-      displayName: identity.displayName,
-      role: identity.role,
-      eventId: input.eventId,
+      userId: context.userId,
+      displayName: context.displayName,
+      role: context.role,
+      eventId: context.eventId,
       text: input.text,
       messageId,
       receivedAtEpoch,
@@ -104,10 +104,11 @@ export function createNoopChatSendBroadcaster(): ChatSendBroadcaster {
   };
 }
 
-export function createNoopSenderIdentityResolver(): SenderIdentityResolver {
+export function createNoopSenderContextResolver(): SenderContextResolver {
   return {
-    async resolve() {
+    async resolve(input) {
       return {
+        eventId: input.eventId ?? "unknown",
         userId: "unknown",
         displayName: "Unknown",
         role: "participant",
@@ -131,6 +132,12 @@ interface ConnectionItem {
   connectionId: string;
   userId?: string;
   role?: Role;
+}
+
+interface ConnectionPointerItem {
+  PK: string;
+  SK: string;
+  eventId: string;
 }
 
 interface ParticipantItem {
@@ -216,15 +223,31 @@ export function createEventChatBroadcaster(deps: {
   };
 }
 
-export function createDynamoSenderIdentityResolver(deps: { db: DbOps }): SenderIdentityResolver {
+function connectionPointerKey(connectionId: string) {
+  return {
+    PK: `CONNECTION#${connectionId}`,
+    SK: "META",
+  };
+}
+
+export function createDynamoSenderContextResolver(deps: { db: DbOps }): SenderContextResolver {
   return {
     async resolve(input) {
       if (!input.connectionId) {
         return null;
       }
 
+      const resolvedEventId =
+        input.eventId ??
+        (await deps.db.getByKey<ConnectionPointerItem>(connectionPointerKey(input.connectionId)))
+          ?.eventId;
+
+      if (!resolvedEventId) {
+        return null;
+      }
+
       const connectionItem = await deps.db.getByKey<ConnectionItem>({
-        PK: `EVENT#${input.eventId}`,
+        PK: `EVENT#${resolvedEventId}`,
         SK: `CONN#${input.connectionId}`,
       });
 
@@ -233,7 +256,7 @@ export function createDynamoSenderIdentityResolver(deps: { db: DbOps }): SenderI
       }
 
       const participant = await deps.db.getByKey<ParticipantItem>({
-        PK: `EVENT#${input.eventId}`,
+        PK: `EVENT#${resolvedEventId}`,
         SK: `USER#${connectionItem.userId}`,
       });
 
@@ -242,6 +265,7 @@ export function createDynamoSenderIdentityResolver(deps: { db: DbOps }): SenderI
       }
 
       return {
+        eventId: resolvedEventId,
         userId: participant.userId,
         displayName: participant.displayName,
         role: participant.role,
