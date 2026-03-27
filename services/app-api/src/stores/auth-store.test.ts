@@ -82,4 +82,23 @@ describe("auth store", () => {
     expect(first.userId).toBe(second.userId);
     expect(second.email).toBe("user@example.com");
   });
+
+  it("keeps displayName immutable per event", async () => {
+    const stores = createAuthStores({ db: createInMemoryDb() });
+
+    const first = await stores.participantStore.ensureParticipant({
+      eventId: "evt_1",
+      email: "user@example.com",
+      displayName: "Alice",
+    });
+
+    const second = await stores.participantStore.ensureParticipant({
+      eventId: "evt_1",
+      email: "user@example.com",
+      displayName: "Alice Updated",
+    });
+
+    expect(first.userId).toBe(second.userId);
+    expect(second.displayName).toBe("Alice");
+  });
 });

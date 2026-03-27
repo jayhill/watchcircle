@@ -10,6 +10,7 @@ import {
   createDynamoChatSendStore,
   createEventChatBroadcaster,
   createChatSendAction,
+  createDynamoSenderIdentityResolver,
 } from "./handlers/chat-send.js";
 import { createConnectionCleanupStore, createDisconnectHandler } from "./handlers/disconnect.js";
 import { createDefaultRouteHandler as createDefaultRouteDispatchHandler } from "./handlers/default.js";
@@ -70,6 +71,7 @@ export function createDefaultRouteHandler() {
   const db = createDbOperations(docClient, { tableName });
 
   const store = createDynamoChatSendStore({ db });
+  const senderIdentityResolver = createDynamoSenderIdentityResolver({ db });
   const sender = process.env.WS_MANAGEMENT_ENDPOINT
     ? createApiGatewayWsSender()
     : createNoopWsSender();
@@ -83,6 +85,7 @@ export function createDefaultRouteHandler() {
   const chatSendAction = createChatSendAction({
     store,
     broadcaster,
+    senderIdentityResolver,
   });
 
   return createDefaultRouteDispatchHandler({

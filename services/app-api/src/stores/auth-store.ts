@@ -193,7 +193,7 @@ export function createAuthStores(deps: { db: DbOps }) {
           ...participantKey,
           userId,
           email,
-          displayName: input.displayName,
+          displayName: participant?.displayName ?? input.displayName,
           role: participant?.role ?? "participant",
           joinedAt: participant?.joinedAt ?? nowEpoch,
         };
