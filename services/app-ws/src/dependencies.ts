@@ -7,12 +7,13 @@ import {
 
 import { createConnectionStore, createConnectHandler } from "./handlers/connect.js";
 import {
+  createDynamoChatSendStore,
+  createEventChatBroadcaster,
   createChatSendAction,
-  createNoopChatSendBroadcaster,
-  createNoopChatSendStore,
 } from "./handlers/chat-send.js";
 import { createConnectionCleanupStore, createDisconnectHandler } from "./handlers/disconnect.js";
 import { createDefaultRouteHandler as createDefaultRouteDispatchHandler } from "./handlers/default.js";
+import { createApiGatewayWsSender, createNoopWsSender } from "./ws-sender.js";
 
 function readRequiredEnv(name: string): string {
   const value = process.env[name];
@@ -60,9 +61,26 @@ export function createDefaultDisconnectHandler() {
 }
 
 export function createDefaultRouteHandler() {
+  const tableName = readRequiredEnv("TABLE_NAME");
+  const region = process.env.AWS_REGION ?? "us-east-1";
+  const dynamoEndpoint = process.env.DYNAMO_ENDPOINT;
+
+  const dynamo = createDynamoClient({ region, endpoint: dynamoEndpoint });
+  const docClient = createDocumentClient(dynamo);
+  const db = createDbOperations(docClient, { tableName });
+
+  const store = createDynamoChatSendStore({ db });
+  const sender = process.env.WS_MANAGEMENT_ENDPOINT
+    ? createApiGatewayWsSender()
+    : createNoopWsSender();
+  const broadcaster = createEventChatBroadcaster({
+    db,
+    sender,
+  });
+
   const chatSendAction = createChatSendAction({
-    store: createNoopChatSendStore(),
-    broadcaster: createNoopChatSendBroadcaster(),
+    store,
+    broadcaster,
   });
 
   return createDefaultRouteDispatchHandler({

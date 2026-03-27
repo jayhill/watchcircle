@@ -2,13 +2,14 @@ import { CLIENT_ACTIONS } from "../ws-contract.js";
 
 export interface WsDefaultEvent {
   body?: string | null;
+  queryStringParameters?: Record<string, string | undefined>;
   requestContext?: {
     connectionId?: string;
   };
 }
 
 interface ChatSendAction {
-  (input: { connectionId?: string; text: string }): Promise<object>;
+  (input: { connectionId?: string; eventId: string; text: string }): Promise<object>;
 }
 
 function badRequest(body: object) {
@@ -109,8 +110,20 @@ export function createDefaultRouteHandler(deps?: { chatSendAction?: ChatSendActi
         });
       }
 
+      const eventId = event.queryStringParameters?.eventId;
+
+      if (!eventId) {
+        return badRequest({
+          error: {
+            code: "MISSING_EVENT_CONTEXT",
+            message: "eventId is required in connection context.",
+          },
+        });
+      }
+
       const result = await deps.chatSendAction({
         connectionId: event.requestContext?.connectionId,
+        eventId,
         text,
       });
 

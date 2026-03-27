@@ -43,11 +43,30 @@ describe("ws default route", () => {
 
   it("dispatches chat:send to action handler", async () => {
     let capturedText = "";
+    let capturedEventId = "";
     const handler = createDefaultRouteHandler({
-      chatSendAction: async ({ text }) => {
+      chatSendAction: async ({ text, eventId }) => {
         capturedText = text;
+        capturedEventId = eventId;
         return { accepted: true, action: "chat:send" };
       },
+    });
+
+    const result = await handler({
+      requestContext: { connectionId: "conn_1" },
+      queryStringParameters: { eventId: "evt_1" },
+      body: JSON.stringify({ action: "chat:send", payload: { text: "hello" } }),
+    });
+
+    expect(result.statusCode).toBe(200);
+    expect(capturedText).toBe("hello");
+    expect(capturedEventId).toBe("evt_1");
+    expect(result.body).toContain("chat:send");
+  });
+
+  it("requires eventId context for chat:send", async () => {
+    const handler = createDefaultRouteHandler({
+      chatSendAction: async () => ({ accepted: true, action: "chat:send" }),
     });
 
     const result = await handler({
@@ -55,8 +74,7 @@ describe("ws default route", () => {
       body: JSON.stringify({ action: "chat:send", payload: { text: "hello" } }),
     });
 
-    expect(result.statusCode).toBe(200);
-    expect(capturedText).toBe("hello");
-    expect(result.body).toContain("chat:send");
+    expect(result.statusCode).toBe(400);
+    expect(result.body).toContain("MISSING_EVENT_CONTEXT");
   });
 });

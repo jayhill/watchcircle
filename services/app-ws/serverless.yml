@@ -12,6 +12,7 @@ provider:
     WS_JWT_SECRET: ${env:WS_JWT_SECRET, ''}
     SESSION_JWT_SECRET: ${env:SESSION_JWT_SECRET, ''}
     DYNAMO_ENDPOINT: ${env:DYNAMO_ENDPOINT, ''}
+    WS_MANAGEMENT_ENDPOINT: ${env:WS_MANAGEMENT_ENDPOINT, ''}
 
 custom:
   tableName: WatchCircle-${self:provider.stage}
