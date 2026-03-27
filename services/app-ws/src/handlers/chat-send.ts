@@ -106,13 +106,20 @@ export function createDynamoChatSendStore(deps: { db: DbOps }): ChatSendStore {
   };
 }
 
+type ConnectionSendResult = "sent" | "gone";
+
 interface ConnectionSender {
-  send(connectionId: string, message: object): Promise<void>;
+  send(connectionId: string, message: object): Promise<ConnectionSendResult>;
+}
+
+interface ConnectionCleanupStore {
+  removeConnection(input: { eventId: string; connectionId: string }): Promise<void>;
 }
 
 export function createEventChatBroadcaster(deps: {
   db: DbOps;
   sender: ConnectionSender;
+  connectionCleanupStore?: ConnectionCleanupStore;
 }): ChatSendBroadcaster {
   return {
     async broadcast(input) {
@@ -125,8 +132,8 @@ export function createEventChatBroadcaster(deps: {
       });
 
       await Promise.all(
-        connections.map((connection) =>
-          deps.sender.send(connection.connectionId, {
+        connections.map(async (connection) => {
+          const result = await deps.sender.send(connection.connectionId, {
             action: "chat:new",
             payload: {
               message: {
@@ -137,8 +144,15 @@ export function createEventChatBroadcaster(deps: {
                 createdAt: input.receivedAtEpoch,
               },
             },
-          })
-        )
+          });
+
+          if (result === "gone" && deps.connectionCleanupStore) {
+            await deps.connectionCleanupStore.removeConnection({
+              eventId: input.eventId,
+              connectionId: connection.connectionId,
+            });
+          }
+        })
       );
     },
   };

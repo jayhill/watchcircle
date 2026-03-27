@@ -4,8 +4,10 @@ import {
   PostToConnectionCommand,
 } from "@aws-sdk/client-apigatewaymanagementapi";
 
-interface WsSender {
-  send(connectionId: string, message: object): Promise<void>;
+export type WsSendResult = "sent" | "gone";
+
+export interface WsSender {
+  send(connectionId: string, message: object): Promise<WsSendResult>;
 }
 
 function readRequiredEnv(name: string): string {
@@ -21,7 +23,7 @@ export function createApiGatewayWsSender(): WsSender {
   const client = new ApiGatewayManagementApiClient({ endpoint });
 
   return {
-    async send(connectionId: string, message: object): Promise<void> {
+    async send(connectionId: string, message: object): Promise<WsSendResult> {
       try {
         await client.send(
           new PostToConnectionCommand({
@@ -29,9 +31,10 @@ export function createApiGatewayWsSender(): WsSender {
             Data: Buffer.from(JSON.stringify(message)),
           })
         );
+        return "sent";
       } catch (error) {
         if (error instanceof GoneException) {
-          return;
+          return "gone";
         }
 
         throw error;
@@ -43,7 +46,7 @@ export function createApiGatewayWsSender(): WsSender {
 export function createNoopWsSender(): WsSender {
   return {
     async send() {
-      return;
+      return "sent";
     },
   };
 }
