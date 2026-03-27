@@ -121,13 +121,26 @@ export function createDefaultRouteHandler(deps?: { chatSendAction?: ChatSendActi
         });
       }
 
-      const result = await deps.chatSendAction({
-        connectionId: event.requestContext?.connectionId,
-        eventId,
-        text,
-      });
+      try {
+        const result = await deps.chatSendAction({
+          connectionId: event.requestContext?.connectionId,
+          eventId,
+          text,
+        });
 
-      return ok(result);
+        return ok(result);
+      } catch (error) {
+        if (error instanceof Error && error.message === "SENDER_NOT_FOUND") {
+          return badRequest({
+            error: {
+              code: "SENDER_NOT_FOUND",
+              message: "Sender identity could not be resolved for this connection.",
+            },
+          });
+        }
+
+        throw error;
+      }
     }
 
     return ok({
