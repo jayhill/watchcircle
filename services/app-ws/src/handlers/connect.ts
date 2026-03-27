@@ -17,6 +17,13 @@ interface ConnectionStore {
   }): Promise<void>;
 }
 
+function connectionPointerKey(connectionId: string) {
+  return {
+    PK: `CONNECTION#${connectionId}`,
+    SK: "META",
+  };
+}
+
 type SessionServices = ReturnType<typeof createSessionTokenService>;
 
 function unauthorized() {
@@ -89,6 +96,16 @@ export function createConnectionStore(deps: { db: DbOps; ttlSeconds?: number }):
       await deps.db.putItem({
         ...key,
         connectionId: input.connectionId,
+        userId: input.userId,
+        role: input.role,
+        connectedAtEpoch: input.connectedAtEpoch,
+        ttl,
+      });
+
+      await deps.db.putItem({
+        ...connectionPointerKey(input.connectionId),
+        connectionId: input.connectionId,
+        eventId: input.eventId,
         userId: input.userId,
         role: input.role,
         connectedAtEpoch: input.connectedAtEpoch,

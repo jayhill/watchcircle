@@ -109,11 +109,30 @@ describe("connection store", () => {
     });
 
     const items = db.getAll();
-    expect(items).toHaveLength(1);
-    const saved = items[0];
+    const saved = items.find((item) => item.PK === "EVENT#evt_1" && item.SK === "CONN#conn_1");
     expect(saved).toBeDefined();
     expect(saved?.PK).toBe("EVENT#evt_1");
     expect(saved?.SK).toBe("CONN#conn_1");
     expect(saved?.ttl).toBe(1_700_000_060);
+  });
+
+  it("writes reverse connection pointer for disconnect cleanup", async () => {
+    const db = createInMemoryDb();
+    const store = createConnectionStore({ db, ttlSeconds: 60 });
+
+    await store.putConnection({
+      eventId: "evt_1",
+      connectionId: "conn_1",
+      userId: "usr_1",
+      role: "participant",
+      connectedAtEpoch: 1_700_000_000,
+    });
+
+    const items = db.getAll();
+    expect(items).toHaveLength(2);
+    const pointer = items.find((item) => item.PK === "CONNECTION#conn_1");
+    expect(pointer).toBeDefined();
+    expect(pointer?.SK).toBe("META");
+    expect(pointer?.eventId).toBe("evt_1");
   });
 });

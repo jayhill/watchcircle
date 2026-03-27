@@ -8,7 +8,7 @@ export interface WsDisconnectEvent {
 }
 
 interface ConnectionStore {
-  removeConnection(input: { eventId: string; connectionId: string }): Promise<void>;
+  removeConnection(input: { eventId?: string; connectionId: string }): Promise<void>;
 }
 
 function badRequest() {
@@ -21,13 +21,15 @@ function badRequest() {
 export function createDisconnectHandler(deps: { connectionStore: ConnectionStore }) {
   return async (event: WsDisconnectEvent) => {
     const connectionId = event.requestContext.connectionId;
-    const eventId = event.queryStringParameters?.eventId;
 
-    if (!connectionId || !eventId) {
+    if (!connectionId) {
       return badRequest();
     }
 
-    await deps.connectionStore.removeConnection({ eventId, connectionId });
+    await deps.connectionStore.removeConnection({
+      eventId: event.queryStringParameters?.eventId,
+      connectionId,
+    });
 
     return {
       statusCode: 200,
@@ -37,13 +39,36 @@ export function createDisconnectHandler(deps: { connectionStore: ConnectionStore
 }
 
 type DbOps = {
+  getByKey<T>(key: { PK: string; SK: string }): Promise<T | null>;
   deleteByKey(key: { PK: string; SK: string }): Promise<void>;
 };
+
+function connectionPointerKey(connectionId: string) {
+  return {
+    PK: `CONNECTION#${connectionId}`,
+    SK: "META",
+  };
+}
+
+interface ConnectionPointerItem {
+  PK: string;
+  SK: string;
+  eventId: string;
+}
 
 export function createConnectionCleanupStore(deps: { db: DbOps }): ConnectionStore {
   return {
     async removeConnection(input) {
-      await deps.db.deleteByKey(wsConnectionKey(input.eventId, input.connectionId));
+      const eventId =
+        input.eventId ??
+        (await deps.db.getByKey<ConnectionPointerItem>(connectionPointerKey(input.connectionId)))
+          ?.eventId;
+
+      if (eventId) {
+        await deps.db.deleteByKey(wsConnectionKey(eventId, input.connectionId));
+      }
+
+      await deps.db.deleteByKey(connectionPointerKey(input.connectionId));
     },
   };
 }

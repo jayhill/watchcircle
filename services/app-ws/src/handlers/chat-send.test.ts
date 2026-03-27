@@ -93,6 +93,9 @@ describe("chat send action", () => {
 
     const broadcaster = createEventChatBroadcaster({
       db: {
+        async getByKey() {
+          return null;
+        },
         async putItem() {
           return;
         },
@@ -141,39 +144,33 @@ describe("chat send action", () => {
   it("resolves sender identity from connection and participant records", async () => {
     const resolver = createDynamoSenderIdentityResolver({
       db: {
+        async getByKey<T>(key: { PK: string; SK: string }): Promise<T | null> {
+          if (key.SK === "CONN#conn_1") {
+            return {
+              PK: "EVENT#evt_1",
+              SK: "CONN#conn_1",
+              connectionId: "conn_1",
+              userId: "usr_1",
+              role: "participant",
+            } as T;
+          }
+
+          if (key.SK === "USER#usr_1") {
+            return {
+              PK: "EVENT#evt_1",
+              SK: "USER#usr_1",
+              userId: "usr_1",
+              displayName: "Alice",
+              role: "participant",
+            } as T;
+          }
+
+          return null;
+        },
         async putItem() {
           return;
         },
-        async queryItems<T>(input: {
-          KeyConditionExpression: string;
-          ExpressionAttributeValues: Record<string, unknown>;
-        }) {
-          const sk = input.ExpressionAttributeValues[":sk"];
-
-          if (sk === "CONN#conn_1") {
-            return [
-              {
-                PK: "EVENT#evt_1",
-                SK: "CONN#conn_1",
-                connectionId: "conn_1",
-                userId: "usr_1",
-                role: "participant",
-              },
-            ] as unknown as T[];
-          }
-
-          if (sk === "USER#usr_1") {
-            return [
-              {
-                PK: "EVENT#evt_1",
-                SK: "USER#usr_1",
-                userId: "usr_1",
-                displayName: "Alice",
-                role: "participant",
-              },
-            ] as unknown as T[];
-          }
-
+        async queryItems<T>() {
           return [] as unknown as T[];
         },
       },

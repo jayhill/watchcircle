@@ -117,6 +117,7 @@ export function createNoopSenderIdentityResolver(): SenderIdentityResolver {
 }
 
 type DbOps = {
+  getByKey<T>(key: { PK: string; SK: string }): Promise<T | null>;
   putItem<T extends object>(item: T): Promise<void>;
   queryItems<T>(input: {
     KeyConditionExpression: string;
@@ -222,29 +223,19 @@ export function createDynamoSenderIdentityResolver(deps: { db: DbOps }): SenderI
         return null;
       }
 
-      const connection = await deps.db.queryItems<ConnectionItem>({
-        KeyConditionExpression: "PK = :pk AND SK = :sk",
-        ExpressionAttributeValues: {
-          ":pk": `EVENT#${input.eventId}`,
-          ":sk": `CONN#${input.connectionId}`,
-        },
+      const connectionItem = await deps.db.getByKey<ConnectionItem>({
+        PK: `EVENT#${input.eventId}`,
+        SK: `CONN#${input.connectionId}`,
       });
-
-      const connectionItem = connection[0];
 
       if (!connectionItem?.userId) {
         return null;
       }
 
-      const participants = await deps.db.queryItems<ParticipantItem>({
-        KeyConditionExpression: "PK = :pk AND SK = :sk",
-        ExpressionAttributeValues: {
-          ":pk": `EVENT#${input.eventId}`,
-          ":sk": `USER#${connectionItem.userId}`,
-        },
+      const participant = await deps.db.getByKey<ParticipantItem>({
+        PK: `EVENT#${input.eventId}`,
+        SK: `USER#${connectionItem.userId}`,
       });
-
-      const participant = participants[0];
 
       if (!participant) {
         return null;
