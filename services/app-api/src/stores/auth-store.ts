@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 
 import {
+  eventMetaKey,
   eventParticipantKey,
   magicTokenKey,
   normalizeEmail,
@@ -34,6 +35,12 @@ interface ParticipantItem {
   displayName: string;
   role: "host" | "cohost" | "panelist" | "participant";
   joinedAt: number;
+}
+
+interface EventMetaItem {
+  PK: string;
+  SK: string;
+  creatorEmail?: string;
 }
 
 interface RateLimitItem {
@@ -188,13 +195,19 @@ export function createAuthStores(deps: { db: DbOps }) {
 
         const participantKey = eventParticipantKey(input.eventId, userId);
         const participant = await db.getByKey<ParticipantItem>(participantKey);
+        const eventMeta = await db.getByKey<EventMetaItem>(eventMetaKey(input.eventId));
+        const role =
+          participant?.role ??
+          (eventMeta?.creatorEmail && normalizeEmail(eventMeta.creatorEmail) === email
+            ? "host"
+            : "participant");
 
         const nextParticipant: ParticipantItem = {
           ...participantKey,
           userId,
           email,
           displayName: participant?.displayName ?? input.displayName,
-          role: participant?.role ?? "participant",
+          role,
           joinedAt: participant?.joinedAt ?? nowEpoch,
         };
 
