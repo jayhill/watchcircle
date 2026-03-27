@@ -43,7 +43,7 @@ describe("ws default route", () => {
 
   it("dispatches chat:send to action handler", async () => {
     let capturedText = "";
-    let capturedEventId = "";
+    let capturedEventId: string | undefined;
     let capturedConnectionId = "";
     const handler = createDefaultRouteHandler({
       chatSendAction: async ({ text, eventId, connectionId }) => {
@@ -67,9 +67,13 @@ describe("ws default route", () => {
     expect(result.body).toContain("chat:send");
   });
 
-  it("requires eventId context for chat:send", async () => {
+  it("passes undefined eventId when context is missing", async () => {
+    let capturedEventId: string | undefined;
     const handler = createDefaultRouteHandler({
-      chatSendAction: async () => ({ accepted: true, action: "chat:send" }),
+      chatSendAction: async ({ eventId }) => {
+        capturedEventId = eventId;
+        return { accepted: true, action: "chat:send" };
+      },
     });
 
     const result = await handler({
@@ -77,8 +81,8 @@ describe("ws default route", () => {
       body: JSON.stringify({ action: "chat:send", payload: { text: "hello" } }),
     });
 
-    expect(result.statusCode).toBe(400);
-    expect(result.body).toContain("MISSING_EVENT_CONTEXT");
+    expect(result.statusCode).toBe(200);
+    expect(capturedEventId).toBeUndefined();
   });
 
   it("maps unresolved sender to SENDER_NOT_FOUND response", async () => {

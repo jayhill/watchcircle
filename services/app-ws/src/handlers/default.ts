@@ -9,7 +9,7 @@ export interface WsDefaultEvent {
 }
 
 interface ChatSendAction {
-  (input: { connectionId?: string; eventId: string; text: string }): Promise<object>;
+  (input: { connectionId?: string; eventId?: string; text: string }): Promise<object>;
 }
 
 function badRequest(body: object) {
@@ -110,21 +110,10 @@ export function createDefaultRouteHandler(deps?: { chatSendAction?: ChatSendActi
         });
       }
 
-      const eventId = event.queryStringParameters?.eventId;
-
-      if (!eventId) {
-        return badRequest({
-          error: {
-            code: "MISSING_EVENT_CONTEXT",
-            message: "eventId is required in connection context.",
-          },
-        });
-      }
-
       try {
         const result = await deps.chatSendAction({
           connectionId: event.requestContext?.connectionId,
-          eventId,
+          eventId: event.queryStringParameters?.eventId,
           text,
         });
 

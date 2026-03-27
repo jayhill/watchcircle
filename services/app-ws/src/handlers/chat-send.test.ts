@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   createChatSendAction,
-  createDynamoSenderIdentityResolver,
+  createDynamoSenderContextResolver,
   createEventChatBroadcaster,
 } from "./chat-send.js";
 
@@ -41,9 +41,10 @@ describe("chat send action", () => {
           return;
         },
       },
-      senderIdentityResolver: {
+      senderContextResolver: {
         async resolve() {
           return {
+            eventId: "evt_1",
             userId: "usr_1",
             displayName: "Alice",
             role: "participant" as const,
@@ -76,7 +77,7 @@ describe("chat send action", () => {
           return;
         },
       },
-      senderIdentityResolver: {
+      senderContextResolver: {
         async resolve() {
           return null;
         },
@@ -142,9 +143,17 @@ describe("chat send action", () => {
   });
 
   it("resolves sender identity from connection and participant records", async () => {
-    const resolver = createDynamoSenderIdentityResolver({
+    const resolver = createDynamoSenderContextResolver({
       db: {
         async getByKey<T>(key: { PK: string; SK: string }): Promise<T | null> {
+          if (key.PK === "CONNECTION#conn_1" && key.SK === "META") {
+            return {
+              PK: "CONNECTION#conn_1",
+              SK: "META",
+              eventId: "evt_1",
+            } as T;
+          }
+
           if (key.SK === "CONN#conn_1") {
             return {
               PK: "EVENT#evt_1",
@@ -177,11 +186,11 @@ describe("chat send action", () => {
     });
 
     const resolved = await resolver.resolve({
-      eventId: "evt_1",
       connectionId: "conn_1",
     });
 
     expect(resolved).toEqual({
+      eventId: "evt_1",
       userId: "usr_1",
       displayName: "Alice",
       role: "participant",
