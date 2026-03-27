@@ -13,6 +13,9 @@ provider:
     SSM_PREFIX: ${env:SSM_PREFIX, '/watchcircle'}
     SESSION_JWT_SECRET: ${env:SESSION_JWT_SECRET, ''}
     WS_JWT_SECRET: ${env:WS_JWT_SECRET, ''}
+    AUTH_EMAIL_SENDER: ${env:AUTH_EMAIL_SENDER, 'noop'}
+    SES_FROM_EMAIL: ${env:SES_FROM_EMAIL, ''}
+    PRODUCT_NAME: ${env:PRODUCT_NAME, 'WatchCircle'}
     DYNAMO_ENDPOINT: ${env:DYNAMO_ENDPOINT, ''}
 
 custom:
