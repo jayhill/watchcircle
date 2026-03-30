@@ -11,8 +11,12 @@
     "apps/web"
   ],
   "scripts": {
+    "preflight:dev": "bash scripts/preflight-dev.sh",
+    "compose:deploy:dev": "serverless deploy --stage dev",
+    "compose:deploy:prod": "serverless deploy --stage prod",
     "deploy:dev": "serverless deploy --stage dev",
     "deploy:prod": "serverless deploy --stage prod",
+    "bootstrap:account": "bash scripts/bootstrap-account.sh",
     "smoke:auth-chat": "bash scripts/smoke-auth-chat.sh",
     "lint": "npm run lint --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
