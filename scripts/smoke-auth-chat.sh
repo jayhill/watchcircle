@@ -14,7 +14,7 @@ Usage:
     [--event-id evt_123] \
     [--code-source manual|dynamo] \
     [--table-name WatchCircle-dev] \
-    [--aws-region us-east-1]
+    [--aws-region us-east-2]
 
 Notes:
   - If --event-id is omitted, the script creates a new event as host.
@@ -185,7 +185,7 @@ PARTICIPANT_DISPLAY="Participant"
 EVENT_ID=""
 CODE_SOURCE="manual"
 TABLE_NAME=""
-AWS_REGION="us-east-1"
+AWS_REGION="us-east-2"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -248,6 +248,12 @@ if [[ -z "$API_BASE_URL" || -z "$HOST_EMAIL" ]]; then
   echo "error: --api-base-url and --host-email are required" >&2
   usage
   exit 1
+fi
+
+if [[ -n "$PARTICIPANT_EMAIL" && "$CODE_SOURCE" == "dynamo" ]]; then
+  echo "warning: --code-source=dynamo still requires /auth/request to succeed first." >&2
+  echo "         If SES sandbox blocks recipient emails, either verify recipients in SES" >&2
+  echo "         or run with participant omitted for initial smoke setup." >&2
 fi
 
 if [[ "$CODE_SOURCE" != "manual" && "$CODE_SOURCE" != "dynamo" ]]; then
