@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "workspaces": [
     "common",
+    "services/infra",
     "services/app-api",
     "services/app-ws",
     "apps/app",

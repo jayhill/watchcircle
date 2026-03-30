@@ -1,0 +1,10 @@
+{
+  "name": "@watchcircle/infra",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "deploy:dev": "serverless deploy --stage dev",
+    "deploy:prod": "serverless deploy --stage prod",
+    "remove:dev": "serverless remove --stage dev"
+  }
+}
