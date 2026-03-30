@@ -4,16 +4,41 @@ frameworkVersion: "3"
 provider:
   name: aws
   runtime: nodejs20.x
-  region: ${opt:region, 'us-east-1'}
+  region: ${env:AWS_REGION, 'us-east-2'}
   stage: ${opt:stage, 'dev'}
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+            - dynamodb:Query
+            - dynamodb:Scan
+          Resource:
+            - arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/${self:custom.tableName}
+            - arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/${self:custom.tableName}/index/*
+        - Effect: Allow
+          Action:
+            - ssm:GetParameter
+            - ssm:GetParameters
+          Resource:
+            - arn:aws:ssm:${self:provider.region}:${aws:accountId}:parameter/watchcircle/${self:provider.stage}/*
+        - Effect: Allow
+          Action:
+            - ses:SendEmail
+            - ses:SendRawEmail
+          Resource: "*"
   environment:
     TABLE_NAME: ${self:custom.tableName}
     STAGE: ${self:provider.stage}
-    AUTH_SECRETS_SOURCE: ${env:AUTH_SECRETS_SOURCE, 'env'}
+    AUTH_SECRETS_SOURCE: ${env:AUTH_SECRETS_SOURCE, 'ssm'}
     SSM_PREFIX: ${env:SSM_PREFIX, '/watchcircle'}
     SESSION_JWT_SECRET: ${env:SESSION_JWT_SECRET, ''}
     WS_JWT_SECRET: ${env:WS_JWT_SECRET, ''}
-    AUTH_EMAIL_SENDER: ${env:AUTH_EMAIL_SENDER, 'noop'}
+    AUTH_EMAIL_SENDER: ${env:AUTH_EMAIL_SENDER, 'ses'}
     SES_FROM_EMAIL: ${env:SES_FROM_EMAIL, ''}
     PRODUCT_NAME: ${env:PRODUCT_NAME, 'WatchCircle'}
     DYNAMO_ENDPOINT: ${env:DYNAMO_ENDPOINT, ''}
