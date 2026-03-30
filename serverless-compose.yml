@@ -1,5 +1,11 @@
 services:
+  infra:
+    path: services/infra
   app-api:
     path: services/app-api
+    dependsOn:
+      - infra
   app-ws:
     path: services/app-ws
+    dependsOn:
+      - infra

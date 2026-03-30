@@ -1,0 +1,36 @@
+service: watchcircle-infra
+frameworkVersion: "3"
+
+provider:
+  name: aws
+  region: ${env:AWS_REGION, 'us-east-2'}
+  stage: ${opt:stage, 'dev'}
+
+custom:
+  tableName: WatchCircle-${self:provider.stage}
+
+resources:
+  Resources:
+    WatchCircleTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.tableName}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: PK
+            AttributeType: S
+          - AttributeName: SK
+            AttributeType: S
+        KeySchema:
+          - AttributeName: PK
+            KeyType: HASH
+          - AttributeName: SK
+            KeyType: RANGE
+        TimeToLiveSpecification:
+          AttributeName: ttl
+          Enabled: true
+  Outputs:
+    WatchCircleTableName:
+      Value: ${self:custom.tableName}
+      Export:
+        Name: ${self:service}-${self:provider.stage}-table-name
