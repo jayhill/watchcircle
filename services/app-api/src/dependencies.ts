@@ -7,7 +7,11 @@ import {
   createSessionTokenService,
 } from "@watchcircle/common";
 
-import { loadStageSecretsFromSsm, readSecretsFromEnv } from "./ssm-config.js";
+import {
+  loadStageConfigFromSsm,
+  loadStageSecretsFromSsm,
+  readSecretsFromEnv,
+} from "./ssm-config.js";
 import { createNoopEmailSender, createSesEmailSender } from "./email-sender.js";
 import { createAuthHandlers } from "./handlers/auth.js";
 import { createDynamoEventStore, createEventHandlers } from "./handlers/events.js";
@@ -21,11 +25,19 @@ function readRequiredEnv(name: string): string {
   return value;
 }
 
-function buildEmailSender(input: { region: string }) {
-  const source = process.env.AUTH_EMAIL_SENDER ?? "noop";
+function buildEmailSenderWithOverride(input: {
+  region: string;
+  fromEmailOverride?: string;
+  sourceOverride?: string;
+}) {
+  const source = input.sourceOverride ?? process.env.AUTH_EMAIL_SENDER ?? "noop";
 
   if (source === "ses") {
-    const fromEmail = readRequiredEnv("SES_FROM_EMAIL");
+    const fromEmail = input.fromEmailOverride ?? process.env.SES_FROM_EMAIL ?? "";
+    if (!fromEmail) {
+      throw new Error("Missing SES sender email for AUTH_EMAIL_SENDER=ses");
+    }
+
     const productName = process.env.PRODUCT_NAME ?? "WatchCircle";
 
     return createSesEmailSender({
@@ -62,7 +74,10 @@ export function createDefaultAuthHandlers() {
     sessionSecret: secrets.sessionJwtSecret,
     wsSecret: secrets.wsJwtSecret,
   });
-  const emailSender = buildEmailSender({ region });
+  const emailSender = buildEmailSenderWithOverride({
+    region,
+    sourceOverride: process.env.AUTH_EMAIL_SENDER,
+  });
 
   return createAuthHandlers({
     magicLinks,
@@ -105,7 +120,16 @@ export async function createDefaultAuthHandlersFromSsm() {
     sessionSecret: secrets.sessionJwtSecret,
     wsSecret: secrets.wsJwtSecret,
   });
-  const emailSender = buildEmailSender({ region });
+  const stageConfig = await loadStageConfigFromSsm({
+    stage,
+    region,
+    ssmPrefix,
+  });
+  const emailSender = buildEmailSenderWithOverride({
+    region,
+    fromEmailOverride: stageConfig.sesFromEmail,
+    sourceOverride: process.env.AUTH_EMAIL_SENDER,
+  });
 
   return createAuthHandlers({
     magicLinks,

@@ -4,15 +4,37 @@ frameworkVersion: "3"
 provider:
   name: aws
   runtime: nodejs20.x
-  region: ${opt:region, 'us-east-1'}
+  region: ${env:AWS_REGION, 'us-east-2'}
   stage: ${opt:stage, 'dev'}
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+            - dynamodb:Query
+            - dynamodb:Scan
+          Resource:
+            - arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/${self:custom.tableName}
+            - arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/${self:custom.tableName}/index/*
+        - Effect: Allow
+          Action:
+            - ssm:GetParameter
+            - ssm:GetParameters
+          Resource:
+            - arn:aws:ssm:${self:provider.region}:${aws:accountId}:parameter/watchcircle/${self:provider.stage}/*
   environment:
     TABLE_NAME: ${self:custom.tableName}
     STAGE: ${self:provider.stage}
+    AUTH_SECRETS_SOURCE: ${env:AUTH_SECRETS_SOURCE, 'ssm'}
+    SSM_PREFIX: ${env:SSM_PREFIX, '/watchcircle'}
     WS_JWT_SECRET: ${env:WS_JWT_SECRET, ''}
     SESSION_JWT_SECRET: ${env:SESSION_JWT_SECRET, ''}
     DYNAMO_ENDPOINT: ${env:DYNAMO_ENDPOINT, ''}
-    WS_MANAGEMENT_ENDPOINT: ${env:WS_MANAGEMENT_ENDPOINT, ''}
+    WS_MANAGEMENT_ENDPOINT: ${env:WS_MANAGEMENT_ENDPOINT, ''} # optional override; auto-derived from request context
 
 custom:
   tableName: WatchCircle-${self:provider.stage}

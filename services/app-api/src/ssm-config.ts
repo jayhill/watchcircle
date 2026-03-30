@@ -5,6 +5,10 @@ export interface StageSecrets {
   wsJwtSecret: string;
 }
 
+export interface StageConfigFromSsm {
+  sesFromEmail?: string;
+}
+
 function readRequiredEnv(name: string): string {
   const value = process.env[name];
   if (!value) {
@@ -42,6 +46,28 @@ export async function loadStageSecretsFromSsm(input: {
     sessionJwtSecret,
     wsJwtSecret,
   };
+}
+
+export async function loadStageConfigFromSsm(input: {
+  stage: string;
+  region?: string;
+  ssmPrefix?: string;
+}): Promise<StageConfigFromSsm> {
+  const region = input.region ?? process.env.AWS_REGION ?? "us-east-2";
+  const ssmPrefix = (input.ssmPrefix ?? "/watchcircle").replace(/\/$/, "");
+  const client = new SSMClient({ region });
+  const sesName = `${ssmPrefix}/${input.stage}/ses-from-email`;
+
+  try {
+    const ses = await client.send(
+      new GetParameterCommand({ Name: sesName, WithDecryption: false })
+    );
+    return {
+      sesFromEmail: ses.Parameter?.Value,
+    };
+  } catch {
+    return {};
+  }
 }
 
 export function readSecretsFromEnv(): StageSecrets {
