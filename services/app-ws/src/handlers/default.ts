@@ -5,11 +5,18 @@ export interface WsDefaultEvent {
   queryStringParameters?: Record<string, string | undefined>;
   requestContext?: {
     connectionId?: string;
+    domainName?: string;
+    stage?: string;
   };
 }
 
 interface ChatSendAction {
-  (input: { connectionId?: string; eventId?: string; text: string }): Promise<object>;
+  (input: {
+    connectionId?: string;
+    eventId?: string;
+    text: string;
+    managementEndpoint?: string;
+  }): Promise<object>;
 }
 
 function badRequest(body: object) {
@@ -115,6 +122,10 @@ export function createDefaultRouteHandler(deps?: { chatSendAction?: ChatSendActi
           connectionId: event.requestContext?.connectionId,
           eventId: event.queryStringParameters?.eventId,
           text,
+          managementEndpoint:
+            event.requestContext?.domainName && event.requestContext?.stage
+              ? `https://${event.requestContext.domainName}/${event.requestContext.stage}`
+              : undefined,
         });
 
         return ok(result);

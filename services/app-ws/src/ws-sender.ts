@@ -8,24 +8,41 @@ import type { ChatNewEvent } from "@watchcircle/common";
 export type WsSendResult = "sent" | "gone";
 
 export interface WsSender {
-  send(connectionId: string, message: ChatNewEvent): Promise<WsSendResult>;
-}
-
-function readRequiredEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`Missing required env var: ${name}`);
-  }
-  return value;
+  send(
+    connectionId: string,
+    message: ChatNewEvent,
+    managementEndpoint?: string
+  ): Promise<WsSendResult>;
 }
 
 export function createApiGatewayWsSender(): WsSender {
-  const endpoint = readRequiredEnv("WS_MANAGEMENT_ENDPOINT");
-  const client = new ApiGatewayManagementApiClient({ endpoint });
+  const defaultEndpoint = process.env.WS_MANAGEMENT_ENDPOINT;
+  const clients = new Map<string, ApiGatewayManagementApiClient>();
+
+  function getClient(endpointOverride?: string) {
+    const endpoint = endpointOverride ?? defaultEndpoint;
+    if (!endpoint) {
+      throw new Error("Missing WS management endpoint");
+    }
+
+    const existing = clients.get(endpoint);
+    if (existing) {
+      return existing;
+    }
+
+    const created = new ApiGatewayManagementApiClient({ endpoint });
+    clients.set(endpoint, created);
+    return created;
+  }
 
   return {
-    async send(connectionId: string, message: ChatNewEvent): Promise<WsSendResult> {
+    async send(
+      connectionId: string,
+      message: ChatNewEvent,
+      managementEndpoint?: string
+    ): Promise<WsSendResult> {
       try {
+        const client = getClient(managementEndpoint);
         await client.send(
           new PostToConnectionCommand({
             ConnectionId: connectionId,
