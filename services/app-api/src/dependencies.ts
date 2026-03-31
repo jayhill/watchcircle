@@ -30,7 +30,9 @@ function buildEmailSenderWithOverride(input: {
   fromEmailOverride?: string;
   sourceOverride?: string;
 }) {
-  const source = input.sourceOverride ?? process.env.AUTH_EMAIL_SENDER ?? "noop";
+  const source = (input.sourceOverride ?? process.env.AUTH_EMAIL_SENDER ?? "ses")
+    .trim()
+    .toLowerCase();
 
   if (source === "ses") {
     const fromEmail = input.fromEmailOverride ?? process.env.SES_FROM_EMAIL ?? "";
@@ -47,7 +49,11 @@ function buildEmailSenderWithOverride(input: {
     });
   }
 
-  return createNoopEmailSender();
+  if (source === "noop") {
+    return createNoopEmailSender();
+  }
+
+  throw new Error(`Unsupported AUTH_EMAIL_SENDER value: ${source}`);
 }
 
 export function createDefaultAuthHandlers() {
