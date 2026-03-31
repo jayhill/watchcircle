@@ -26,6 +26,7 @@
     "deploy:prod": "serverless deploy --stage prod",
     "bootstrap:account": "bash scripts/bootstrap-account.sh",
     "smoke:auth-chat": "bash scripts/smoke-auth-chat.sh",
+    "smoke:dev": "bash scripts/smoke-dev.sh",
     "lint": "npm run lint --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
