@@ -15,7 +15,7 @@ import {
 import { createConnectionCleanupStore, createDisconnectHandler } from "./handlers/disconnect.js";
 import { createDefaultRouteHandler as createDefaultRouteDispatchHandler } from "./handlers/default.js";
 import { loadWsSecretsFromSsm, readWsSecretsFromEnv } from "./ssm-config.js";
-import { createApiGatewayWsSender, createNoopWsSender } from "./ws-sender.js";
+import { createApiGatewayWsSender } from "./ws-sender.js";
 
 function readRequiredEnv(name: string): string {
   const value = process.env[name];
@@ -99,9 +99,7 @@ export function createDefaultRouteHandler() {
 
   const store = createDynamoChatSendStore({ db });
   const senderContextResolver = createDynamoSenderContextResolver({ db });
-  const sender = process.env.WS_MANAGEMENT_ENDPOINT
-    ? createApiGatewayWsSender()
-    : createNoopWsSender();
+  const sender = createApiGatewayWsSender();
   const connectionCleanupStore = createConnectionCleanupStore({ db });
   const broadcaster = createEventChatBroadcaster({
     db,
@@ -138,9 +136,7 @@ export async function createDefaultRouteHandlerFromSsm() {
 
   const store = createDynamoChatSendStore({ db });
   const senderContextResolver = createDynamoSenderContextResolver({ db });
-  const sender = process.env.WS_MANAGEMENT_ENDPOINT
-    ? createApiGatewayWsSender()
-    : createNoopWsSender();
+  const sender = createApiGatewayWsSender();
   const connectionCleanupStore = createConnectionCleanupStore({ db });
   const broadcaster = createEventChatBroadcaster({
     db,
